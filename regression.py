@@ -7,31 +7,32 @@ class Model():
         """Multiple regression.
 
         :param Y: Dependent (explained) variable
-        :type Y: class "pandas.core.series.Series"
+        :type Y: class "pandas.core.series.Series" or "pandas.core.frame.DataFrame"
         
-        :param X: Independent (eplaining) variable(s). 
+        :param X: Independent (explaining) variable(s). 
         :type X: class "pandas.core.series.Series" or "pandas.core.frame.DataFrame"
-        
-        Example: 
-            df = load_dataset() 
-            Y = df["Price"]
-            X = df.drop(columns=["Price"]) 
-            m = Model(Y, X)
         """
         self._init_normal_distribution()
-        self.Y = Y
-        self.X = pd.DataFrame(X)
         self.N = len(Y)
+        keys = pd.Series(range(0, self.N))
         
-    def regression(self):
-        """Compute and print multiple regression results."""
+        # Reassign new index in case Y or X are coming from slices, which causes "matrices not aligned error"
+        self.Y = pd.Series(pd.DataFrame(Y).set_index(keys=keys).iloc[:,0])
+        self.X = pd.DataFrame(X).set_index(keys=keys)
+
+    def regression(self, showCorrelation=True):
+        """Compute and print multiple regression results.
+        
+        :param showCorrelation: Set False if you don't need to check multicollinearity, defaults to True.
+        :type showCorrelation: bool
+        """
         
         print("Regression starts... \n")
         
         Y = self.Y
         X = self.X
-        k = len(self.X.columns) # Number of explaining variables
-        N = len(self.Y)
+        k = len(self.X.columns) # Number of independent variables
+        N = self.N
         
         # Add constant vector and rearrange X's order to compute coefficient.
         X["_constant_"] = 1
@@ -58,7 +59,7 @@ class Model():
         V_hat = (np.linalg.inv((1/N * X.T @ X))) @ \
                     (1/(N-k-1) * X.T @ np.diag(residual**2) @ X) @ \
                     (np.linalg.inv((1/N) * X.T @ X))
-        # V_hat shapes 3 x 3 symmetric matrix. To get V for each coefficient, sum them up:
+        # V_hat shapes 3 x 3 symmetric matrix. To get V for each coefficient, extract diagonal matrix:
         V_hat = np.diag(V_hat)
         
         # Standard error of coefficients
@@ -89,9 +90,14 @@ class Model():
             }
         )
         
+        print(f"Explained variable: {self.Y.name}\n")
         print(f"Adjusted R-squared: {round(R2, 4)}\n")
         print("Two-tailed t-test results:\n")
-        print(df)
+        print(df, '\n')
+        
+        if showCorrelation:
+            print("\nCorrelation between independent variables:\n")
+            print(X.drop(columns="_constant_").corr())
         
     
     def _init_normal_distribution(self):
@@ -122,7 +128,7 @@ class Model():
     def visualizeDistributions(self):
         n = len(self.pdf)
         with plt.style.context("dark_background"):
-            plt.figure(figsize=(22, 9))
+            plt.figure(figsize=(24, 6))
             plt.subplots_adjust(wspace=0.3, hspace=0.3)
             
             def plot(title, place, x, y):
@@ -133,18 +139,8 @@ class Model():
                 plt.yticks(fontsize=15)
                 plt.grid(alpha=0.5)
                 
-            plot("SND", 221, self.sndx, self.pdf / n )
-            plot("CDF", 222, self.sndx, self.cdf)
-            plot("SND (n)", 223, list(range(n)), self.pdf / n)
-            plot("CDF (n)", 224, list(range(n)), self.cdf)
+            plot("SND", 121, self.sndx, self.pdf / n )
+            plot("CDF", 122, self.sndx, self.cdf)
             
             plt.show()
-        
-                
-def load_dataset():
-    df = pd.read_csv("room.csv")
-    
-    return df
-        
 
-    

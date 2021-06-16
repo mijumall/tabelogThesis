@@ -1,5 +1,0 @@
-* Finding multicollineality algorithm
-
-* df.describe() to csv to Excel and look beautiful?
-
-* How to set explaining variables
